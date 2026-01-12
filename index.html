@@ -5,24 +5,154 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Unity Web Player | KillersArena</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
-    <link rel="stylesheet" href="TemplateData/style.css">
+    <style>
+      body {
+        padding: 0;
+        margin: 0;
+        background: url('BG_Game.png') no-repeat center center fixed;
+        background-size: cover;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, sans-serif;
+      }
+
+      #unity-container {
+        position: relative;
+        display: inline-block;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      #unity-container:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      #unity-canvas {
+        background: #754CA8;
+        border-radius: 20px;
+        display: block;
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+      }
+
+      #unity-fullscreen-button {
+        cursor: pointer;
+        position: absolute;
+        bottom: 20px;
+        right: 20px;
+        width: 50px;
+        height: 50px;
+        background: url('TemplateData/fullscreen-button.png') no-repeat center;
+        background-size: contain;
+        border: none;
+        border-radius: 50%;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        z-index: 10;
+      }
+
+      #unity-fullscreen-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        background-color: rgba(255, 255, 255, 0.2);
+      }
+
+      /* Loading screen styles */
+      #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: url('BG.png') no-repeat center center;
+        background-size: cover;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        flex-direction: column;
+      }
+
+      #loading-text {
+        color: white;
+        font-size: 36px;
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        margin-top: 20px;
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+      }
+
+      .loading-spinner {
+        width: 60px;
+        height: 60px;
+        border: 5px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top: 5px solid #fff;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 768px) {
+        #unity-fullscreen-button {
+          width: 40px;
+          height: 40px;
+          bottom: 15px;
+          right: 15px;
+        }
+
+        #loading-text {
+          font-size: 24px;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="unity-container" class="unity-desktop">
+    <div id="loading-screen">
+      <div class="loading-spinner"></div>
+      <div id="loading-text">Loading</div>
+    </div>
+
+    <div id="unity-container">
       <canvas id="unity-canvas" width=1600 height=900 tabindex="-1"></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
+      <div id="unity-fullscreen-button"></div>
+    </div>
+
+    <!-- Fullscreen suggestion popup -->
+    <div id="fullscreen-popup" class="hidden" style="position: fixed; top: -200px; right: 20px; z-index: 10000; transition: top 0.3s ease;">
+      <div style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); padding: 20px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); min-width: 280px;">
+        <h3 style="color: white; margin: 0 0 15px 0; font-size: 18px; text-align: center;">🎮 Better Gaming Experience</h3>
+        <p style="color: white; margin: 0 0 15px 0; font-size: 16px; text-align: center;">Go fullscreen for the best gameplay experience!</p>
+        <div style="display: flex; justify-content: center; gap: 10px;">
+          <button id="fullscreen-yes-btn" style="background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; transition: all 0.2s ease;">YES</button>
+          <button id="fullscreen-no-btn" style="background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; transition: all 0.2s ease;">NO</button>
         </div>
       </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-logo-title-footer"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">KillersArena</div>
-      </div>
     </div>
+    
     <script>
       var canvas = document.querySelector("#unity-canvas");
 
@@ -52,17 +182,23 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/KA_Desktop.loader.js";
+      var loaderUrl = buildUrl + "/Test.loader.js";
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/KA_Desktop.data",
-        frameworkUrl: buildUrl + "/KA_Desktop.framework.js",
-        codeUrl: buildUrl + "/KA_Desktop.wasm",
+        dataUrl: buildUrl + "/Test.data",
+        frameworkUrl: buildUrl + "/Test.framework.js",
+        codeUrl: buildUrl + "/Test.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "RuptureLabs",
         productName: "KillersArena",
         productVersion: "1.0",
         showBanner: unityShowBanner,
+        // errorHandler: function(err, url, line) {
+        //    alert("error " + err + " occurred at line " + line);
+        //    // Return 'true' if you handled this error and don't want Unity
+        //    // to process it further, 'false' otherwise.
+        //    return true;
+        // },
       };
 
       // By default, Unity keeps WebGL canvas render target size matched with
@@ -78,7 +214,7 @@
       // config.autoSyncPersistentDataPath = true;
       // This autosyncing is currently not the default behavior to avoid regressing
       // existing user projects that might rely on the earlier manual
-      // JS_FileSystem_Sync() behavior, but in future Unity version, this will be
+      // JS_FileSystem_Sync() behavior, but in future Unity version, this will
       // expected to change.
 
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
@@ -88,13 +224,9 @@
         meta.name = 'viewport';
         meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
         document.getElementsByTagName('head')[0].appendChild(meta);
-        document.querySelector("#unity-container").className = "unity-mobile";
-        canvas.className = "unity-mobile";
-
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        canvas.style.borderRadius = "20px";
 
       } else {
         // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
@@ -102,26 +234,80 @@
         canvas.style.height = "900px";
       }
 
-      document.querySelector("#unity-loading-bar").style.display = "block";
+      // Hide loading screen after 1-2 seconds
+      function hideLoadingScreen() {
+        setTimeout(() => {
+          var loadingScreen = document.getElementById("loading-screen");
+          if (loadingScreen) {
+            loadingScreen.classList.add("hidden");
+          }
+          // Show fullscreen suggestion popup after hiding loading screen
+          setTimeout(showFullscreenPopup, 300);
+        }, 1500); // 1.5 seconds
+      }
+
+      // Show fullscreen suggestion popup
+      function showFullscreenPopup() {
+        var popup = document.getElementById("fullscreen-popup");
+        if (popup) {
+          popup.classList.remove("hidden");
+          // Add animation class for slide-down effect
+          setTimeout(() => {
+            popup.style.top = "20px";
+          }, 10);
+        }
+      }
+
+      // Hide fullscreen suggestion popup
+      function hideFullscreenPopup() {
+        var popup = document.getElementById("fullscreen-popup");
+        if (popup) {
+          popup.style.top = "-200px";
+          // Hide completely after animation completes
+          setTimeout(() => {
+            popup.classList.add("hidden");
+          }, 300);
+        }
+      }
 
       var script = document.createElement("script");
       script.src = loaderUrl;
       script.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
-          document.querySelector("#unity-progress-bar-full").style.width = 100 * progress + "%";
-              }).then((unityInstance) => {
-                document.querySelector("#unity-loading-bar").style.display = "none";
-                document.querySelector("#unity-fullscreen-button").onclick = () => {
-                  unityInstance.SetFullscreen(1);
-                };
+          // Handle loading progress if needed
+        }).then((unityInstance) => {
+          document.querySelector("#unity-fullscreen-button").onclick = () => {
+            unityInstance.SetFullscreen(1);
+          };
 
-              }).catch((message) => {
-                alert(message);
-              });
-            };
+          // Store unityInstance globally so the popup buttons can access it
+          window.unityInstance = unityInstance;
+
+          // Hide the loading screen after 1-2 seconds
+          hideLoadingScreen();
+
+          // Add event listeners for the fullscreen popup buttons
+          document.getElementById("fullscreen-yes-btn").addEventListener("click", function() {
+            if (window.unityInstance) {
+              window.unityInstance.SetFullscreen(1);
+            }
+            hideFullscreenPopup();
+          });
+
+          document.getElementById("fullscreen-no-btn").addEventListener("click", function() {
+            hideFullscreenPopup();
+          });
+        }).catch((message) => {
+          alert(message);
+          // Hide the loading screen even if there's an error
+          var loadingScreen = document.getElementById("loading-screen");
+          if (loadingScreen) {
+            loadingScreen.classList.add("hidden");
+          }
+        });
+      };
 
       document.body.appendChild(script);
-
     </script>
   </body>
 </html>
